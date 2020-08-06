@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>pokeKing App</title>
+    <style>
+      body {
+        font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      .header {
+        margin-bottom: 16px;
+      }
+
+      .button {
+        display: inline-block;
+        padding: 15px 25px;
+        font-size: 24px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4caf50;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 9px #999;
+      }
+
+      .pagination button {
+        box-shadow: 0 2px #999;
+        background-color: #4caf50;
+        margin: 3px;
+        cursor: pointer;
+        text-align: center;
+        border: none;
+        color: #fff;
+        outline: none;
+        float: left;
+        padding: 8px 16px;
+        text-decoration: none;
+        border-radius: 15px;
+      }
+
+      .king_modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgb(0, 0, 0);
+        background-color: rgba(0, 0, 0, 0.4);
+      }
+
+      .pagination button.active {
+        background-color: #4caf50;
+        color: white;
+        border-radius: 5px;
+      }
+
+      .pagination button:hover:not(.active) {
+        background-color: #ddd;
+      }
+
+      .modal-content {
+        background-color: transparent;
+        height: 60%;
+        width: 60%;
+        margin: auto;
+
+        animation: animationFrames cubic-bezier(0, 3, 1, 0) 1s;
+        animation-iteration-count: 1;
+        transform-origin: 50% 50%;
+        animation-fill-mode: forwards;
+      }
+
+      h1 {
+        text-align: center;
+        color: #4caf50;
+      }
+
+      th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        text-align: left;
+        background-color: #4caf50;
+        color: white;
+      }
+
+      th,
+      td {
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+        text-transform: capitalize;
+      }
+
+      table {
+        width: 80%;
+        margin: auto auto auto auto;
+      }
+
+      .tbl_img {
+        height: 100%;
+      }
+
+      .king-image {
+        margin: auto;
+        display: block;
+        width: 80%;
+      }
+
+      .pagination {
+        padding: 2%;
+      }
+
+      .king-header{
+        text-transform: uppercase;
+        margin-top:5px;
+        font-size: 10em;
+        font-weight: bold;
+        animation: blinker 0.8s linear infinite;
+      }
+
+      @keyframes animationFrames {
+        0% {
+          opacity: 0;
+          transform: translate(-1500px, 0px);
+        }
+
+        60% {
+          opacity: 1;
+          transform: translate(30px, 0px);
+        }
+
+        80% {
+          transform: translate(-10px, 0px);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translate(0px, 0px);
+        }
+      }
+      @keyframes blinker {
+  50% {
+    opacity: 0;
+  }}
+  .loader {
+  border: 16px solid #f3f3f3; /* Light grey */
+  border-top: 16px solid #4caf50; /* Blue */
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+    </style>
+  </head>
+
+  <body>
+    <div class="header" style="display: flex;">
+      <div
+        id="paginator"
+        class="pagination"
+        style="flex:auto; text-align: center; align-self: center;"
+      ></div>
+      <div style="flex:auto; text-align: center; align-self: center;">
+      <div class="loader"></div>
+    </div>
+      <h1 style="flex:auto;">Welcome to the Pokeking zone.</h1>
+      <div style="flex:auto; text-align: center; align-self: center;">
+        <button id="king_button" class="button">DECLARE THE KING</button>
+      </div>
+    </div>
+
+    <table id="myTable">
+      <thead>
+        <tr>
+          <th>Sprite</th>
+          <th>Name</th>
+          <th>Base Experience</th>
+          <th>Weight</th>
+          <th>Height</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="king_modal" class="king_modal">
+      <div class="modal-content" id="modal-content"></div>
+    </div>
+  </body>
+  <script
+    src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+    integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs="
+    crossorigin="anonymous"
+  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    //handler to show king modal
+    $("#king_button").on("click", () => {
+      $("#modal-content").empty();
+      axios.get("http://localhost:3000/king").then((resp) => {
+        var img = $("<img class='king-image'>");
+        var header = $(`<h1 class='king-header'>${resp.data.name}</h1>`);
+        img.attr("src", resp.data.sprites.front_default);
+        img.appendTo("#modal-content");
+        header.appendTo("#modal-content");
+        $("#king_modal").show();
+      });
+    });
+    //handler to hide king modal
+    $("#king_modal").on("click", (evt) => {
+      if ($(evt.target).is("#king_modal")) {
+        $("#king_modal").hide();
+      }
+    });
+    // send an initial get request when the document is ready to populate data
+    $("document").ready(() => {
+      axios.get("http://localhost:3000/pokemons/0").then((resp) => {
+        generatePaginator(resp.data.paginator);
+        generateTable(resp.data.paginator.limit);
+        alertTableRows(resp.data.pokemons);
+      });
+    });
+    setInterval(()=>{
+        activePage = $('.active').val()
+        axios.get(`http://localhost:3000/pokemons/${activePage}`).then((resp) => {
+        generatePaginator(resp.data.paginator);
+        alertTableRows(resp.data.pokemons);
+      });
+    },4000)
+    //first paginator draw generated at start
+    function generatePaginator(paginator) {
+      let totalPages = paginator.pages;
+      let page = paginator.page;
+      $("#paginator").empty();
+      //a button for every page
+      for (i = 1; i <= totalPages; i++) {
+        let isActive = i-1 == page ? 'active': 'inactive'
+        var button = $("<button/>", {
+          text: i,
+          value: i - 1,
+          class: isActive,
+          click: function () {
+            axios
+              .get("http://localhost:3000/pokemons/" + $(this).val())
+              .then((data) => {
+                alertTableRows(data.data.pokemons);
+                generatePaginator(data.data.paginator)
+              });
+          },
+        });
+        //draw
+        $("#paginator").append(button);
+      }
+    }
+    //first table draw executed at start
+    function generateTable(entries) {
+      $("tbody").empty();
+      //a row for every entry
+      for (i = 0; i < entries; i++) {
+        content = "";
+        content += "<tr>";
+        content += "<td><img class='tbl_img'></td>";
+        content += "<td ></td>";
+        content += "<td ></td>";
+        content += "<td ></td>";
+        content += "<td ></td>";
+        content += "</tr>";
+        //draw
+        $("tbody").append(content);
+      }
+    }
+
+    //update table
+    function alertTableRows(data) {
+      for (i = 0; i < data.length; i++) {
+        let imgCell = $(`tr:nth-child(${i + 1}) > td:eq(0) > img`).attr(
+          "src",
+          data[i].sprites.front_default
+        );
+        let nameCell = $(`tr:nth-child(${i + 1}) > td:eq(1)`).html(
+          data[i].name
+        );
+        let expCell = $(`tr:nth-child(${i + 1}) > td:eq(2)`).html(
+          data[i].base_experience
+        );
+        let weightCell = $(`tr:nth-child(${i + 1}) > td:eq(3)`).html(
+          data[i].weight
+        );
+        let heightCell = $(`tr:nth-child(${i + 1}) > td:eq(4)`).html(
+          data[i].height
+        );
+      }
+    }
+  </script>
+</html>
