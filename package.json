@@ -1,0 +1,25 @@
+{
+  "name": "pokeking",
+  "version": "1.0.0",
+  "description": "Pokeking Search Tool",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nick-aly/pokeKing.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nick-aly/pokeKing/issues"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "express": "^4.17.1",
+    "mongodb": "^3.6.0",
+    "mongoose": "^5.9.27"
+  },
+  "homepage": "https://github.com/nick-aly/pokeKing#readme"
+}
