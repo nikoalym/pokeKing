@@ -8,7 +8,7 @@ const url =
   "mongodb+srv://root:toor@devcluster.solsp.mongodb.net/dev?retryWrites=true&w=majority";
 //express port
 const port = 3000;
-
+const app = express();
 //Pokemon summary model
 const PokemonSummarySchema = new mongoose.Schema({
   name: String,
@@ -62,6 +62,10 @@ mongoose
     useNewUrlParser: true,
   })
   .then(async () => {
+    //reset the db. Uncoment to persist
+    PokemonProfileModel.collection.drop()
+    PokemonSummaryModel.collection.drop()
+    
     //get initial data
     var pokemonSums = await initDb();
 
