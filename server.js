@@ -47,6 +47,8 @@ mongoose
     useNewUrlParser: true,
   })
   .then(async () => {
+    //get initial data
+    var pokemonSums = await initDb();
 
     //send a sigle html page back..
     app.get("/", function (req, res) {
@@ -59,3 +61,41 @@ mongoose
     );
   });
 
+
+  //check if we have anything in db..
+// else itterate the api to fill it.
+async function initDb() {
+  return PokemonSummaryModel.find().then((pokemon) => {
+    console.log("Welcome to the pokeking search zone...");
+    if (pokemon.length) {
+      console.log(pokemon.length, "Pokemons are here!");
+      return pokemon;
+    } else {
+      console.log("No Pokemon found, adding some...");
+      //recursive function to itterate through the api
+      return searchAllPokemon().then((apiPokeSums) =>
+        PokemonSummaryModel.insertMany(apiPokeSums).then(
+          console.log("Pokemons appeared!!")
+        )
+      );
+    }
+  });
+}
+
+//fetch pokemon summaries from API. return the array
+async function searchAllPokemon(
+  url = "https://pokeapi.co/api/v2/pokemon",
+  pokemons = []
+) {
+  return axios
+    .get(url)
+    .then((res) => res.data)
+    .catch((error) => console.log("axios error", error))
+    .then((data) => {
+      while (data.next) {
+        pokemons = pokemons.concat(data.results);
+        return searchAllPokemon(data.next, pokemons);
+      }
+      return pokemons;
+    });
+}
