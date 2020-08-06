@@ -93,7 +93,24 @@ mongoose
         paginator: { pages: pages, skip: skip, page: page, limit: limit },
       });
     });
-
+    
+    //return the pokeKing
+    app.get("/king", async function (req, res) {
+      pokemons = await PokemonProfileModel.find(
+        {},
+        { name: 1, "stats.base_stat": 1, id: 1 }
+      );
+      hihi = pokemons.map((pokemon, index) => {
+        let base_stats = pokemon.stats.map((data) => data.base_stat);
+        let sum_stat = base_stats.reduce((a, b) => a + b, 0);
+        return { name: pokemons[index].name, sum: sum_stat };
+      });
+      pipi = hihi.reduce((a, b) => {
+        return a.sum > b.sum ? a : b;
+      });
+      king = await PokemonProfileModel.findOne({ name: pipi.name });
+      res.send(king);
+    });
 
     //start the server
     app.listen(port, () =>
