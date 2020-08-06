@@ -16,6 +16,21 @@ const PokemonSummarySchema = new mongoose.Schema({
 });
 const PokemonSummaryModel = mongoose.model("pokemon", PokemonSummarySchema);
 
+const PokemonProfileSchema = new mongoose.Schema({
+  id: Number,
+  name: String,
+  url: String,
+  height: Number,
+  weight: Number,
+  base_experience: Number,
+  sprites: {},
+  stats: [],
+});
+const PokemonProfileModel = mongoose.model(
+  "pokemon_profile",
+  PokemonProfileSchema
+);
+
 //Schedule axios reeuests globaly.. the only way i found to debounce them between forEach loopessssssssssss
 function scheduleRequests(axiosInstance, intervalMs) {
   let lastInvocationTime = undefined;
@@ -50,10 +65,35 @@ mongoose
     //get initial data
     var pokemonSums = await initDb();
 
+    //pass the array and search through it for big pokemons
+    searchBigPokemon(
+      pokemonSums.map((pokeSum) => pokeSum.url)
+    );
+
     //send a sigle html page back..
     app.get("/", function (req, res) {
       res.sendFile(path.join(__dirname + "/index.html"));
     });
+
+    //return pokemons in db by page
+    // id is for paging
+    app.get("/pokemons/:id", async function (req, res) {
+      var page = req.params.id; //index
+      var limit = 10; // how many entries the response will have
+      var skip = limit * page; //offset
+      var count = await PokemonProfileModel.countDocuments();
+      var pokemons = await PokemonProfileModel.find(
+        {},
+        {},
+        { skip: skip, limit: limit }
+      ).sort("-weight");
+      var pages = Math.ceil(count / limit); //number of pages
+      res.send({
+        pokemons: pokemons,
+        paginator: { pages: pages, skip: skip, page: page, limit: limit },
+      });
+    });
+
 
     //start the server
     app.listen(port, () =>
@@ -98,4 +138,34 @@ async function searchAllPokemon(
       }
       return pokemons;
     });
+}
+
+//Itterate through summaries and fetch individual pokemon data. Store it if its big.
+//return the super array. Had some problem sending 900 gets in loop
+async function searchBigPokemon(pokemonSummaries, pokemons = []) {
+  while (pokemonSummaries.length) {
+    let next = pokemonSummaries.shift();
+    pokemons.push(
+      axios.get(next).then((resp) => {
+        if (resp.data.height > 20 && resp.data.sprites.front_default) {
+          console.log("Found", resp.data.name, "in the api. Checking pokedex..");
+
+          PokemonProfileModel.findOne({ name: resp.data.name }).then((data) => {
+            if (data) {
+              console.log("Its already in my pokedex");
+              return data;
+            } else {
+              console.log("First time engaging... adding to pokedex.");
+              PokemonProfileModel.create(resp.data).then((data) => {
+                console.log("Done!");
+                return data;
+              });
+            }
+          });
+        }
+        return searchBigPokemon(pokemonSummaries, pokemons);
+      })
+    );
+  }
+  return Promise.all(pokemons);
 }
