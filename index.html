@@ -250,7 +250,7 @@
       $("#status_message").text(message || "");
     }
 
-    function fetchPage(page, shouldGenerateTable = false) {
+    function fetchPage(page, shouldGenerateTable = false, shouldShowError = true) {
       setLoading(true);
 
       return axios
@@ -264,7 +264,9 @@
           showStatus("");
         })
         .catch(() => {
-          showStatus("Unable to load pokemon right now.");
+          if (shouldShowError) {
+            showStatus("Unable to load pokemon right now.");
+          }
         })
         .finally(() => {
           setLoading(false);
@@ -311,7 +313,7 @@
 
     setInterval(() => {
       const activePage = Number($(".active").val() || 0);
-      fetchPage(activePage);
+      fetchPage(activePage, false, false);
     }, 4000);
 
     //first paginator draw generated at start

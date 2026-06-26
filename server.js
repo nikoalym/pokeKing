@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const rateLimit = require("express-rate-limit");
 const path = require("path");
 
 const url = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/pokeking";
@@ -59,31 +60,15 @@ function getPokemonStatTotal(stats = []) {
   return stats.reduce((sum, stat) => sum + stat.base_stat, 0);
 }
 
-function createRateLimiter(windowMs, maxRequests) {
-  const requests = new Map();
-
-  return (req, res, next) => {
-    const key = req.ip || "unknown";
-    const now = Date.now();
-    const currentWindow = requests.get(key);
-
-    if (!currentWindow || now - currentWindow.startedAt >= windowMs) {
-      requests.set(key, { count: 1, startedAt: now });
-      return next();
-    }
-
-    if (currentWindow.count >= maxRequests) {
-      return res.status(429).send({
-        error: "Too many requests. Please try again soon.",
-      });
-    }
-
-    currentWindow.count += 1;
-    return next();
-  };
-}
-
-const apiRateLimiter = createRateLimiter(10000, 25);
+const apiRateLimiter = rateLimit({
+  windowMs: 10 * 1000,
+  limit: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many requests. Please try again soon.",
+  },
+});
 
 mongoose
   .connect(url, {
@@ -113,9 +98,9 @@ mongoose
 
     //return pokemons in db by page
     // id is for paging
-    app.get("/pokemons/:id", apiRateLimiter, async function (req, res) {
+    app.get("/pokemons/:page", apiRateLimiter, async function (req, res) {
       try {
-        var page = Number.parseInt(req.params.id, 10); //index
+        var page = Number.parseInt(req.params.page, 10); //index
         var limit = 10; // how many entries the response will have
 
         if (Number.isNaN(page) || page < 0) {
@@ -135,7 +120,7 @@ mongoose
           paginator: { pages: pages, skip: skip, page: page, limit: limit },
         });
       } catch (error) {
-        console.log("Failed to load pokemons.", error);
+        console.log(`Failed to load pokemons for page ${page}.`, error);
         res.status(500).send({ error: "Failed to load pokemons." });
       }
     });
@@ -166,7 +151,7 @@ mongoose
         const king = await PokemonProfileModel.findOne({ name: kingSummary.name });
         res.send(king);
       } catch (error) {
-        console.log("Failed to load king.", error);
+        console.log("Failed to determine and load the Pokemon king.", error);
         res.status(500).send({ error: "Failed to load king." });
       }
     });
