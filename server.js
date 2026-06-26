@@ -30,7 +30,7 @@ const PokemonProfileModel = mongoose.model(
   PokemonProfileSchema
 );
 
-//Schedule axios reeuests globaly.. the only way i found to debounce them between forEach loopessssssssssss
+//Schedule axios requests globally.. the only way i found to debounce them between forEach loops
 function scheduleRequests(axiosInstance, intervalMs) {
   let lastInvocationTime = undefined;
 
@@ -58,6 +58,32 @@ scheduleRequests(axios, 1000);
 function getPokemonStatTotal(stats = []) {
   return stats.reduce((sum, stat) => sum + stat.base_stat, 0);
 }
+
+function createRateLimiter(windowMs, maxRequests) {
+  const requests = new Map();
+
+  return (req, res, next) => {
+    const key = req.ip || "unknown";
+    const now = Date.now();
+    const currentWindow = requests.get(key);
+
+    if (!currentWindow || now - currentWindow.startedAt >= windowMs) {
+      requests.set(key, { count: 1, startedAt: now });
+      return next();
+    }
+
+    if (currentWindow.count >= maxRequests) {
+      return res.status(429).send({
+        error: "Too many requests. Please try again soon.",
+      });
+    }
+
+    currentWindow.count += 1;
+    return next();
+  };
+}
+
+const apiRateLimiter = createRateLimiter(10000, 25);
 
 mongoose
   .connect(url, {
@@ -87,7 +113,7 @@ mongoose
 
     //return pokemons in db by page
     // id is for paging
-    app.get("/pokemons/:id", async function (req, res) {
+    app.get("/pokemons/:id", apiRateLimiter, async function (req, res) {
       try {
         var page = Number.parseInt(req.params.id, 10); //index
         var limit = 10; // how many entries the response will have
@@ -115,7 +141,7 @@ mongoose
     });
 
     //return the pokeKing
-    app.get("/king", async function (req, res) {
+    app.get("/king", apiRateLimiter, async function (req, res) {
       try {
         const pokemons = await PokemonProfileModel.find(
           {},
@@ -156,7 +182,7 @@ mongoose
   });
 
 //check if we have anything in db..
-// else itterate the api to fill it.
+// else iterate the api to fill it.
 async function initDb() {
   return PokemonSummaryModel.find().then((pokemon) => {
     console.log("Welcome to the pokeking search zone...");
@@ -165,7 +191,7 @@ async function initDb() {
       return pokemon;
     } else {
       console.log("No Pokemon found, adding some...");
-      //recursive function to itterate through the api
+      //recursive function to iterate through the api
       return searchAllPokemon().then((apiPokeSums) => {
         console.log("Pokemons appeared!!");
         return PokemonSummaryModel.insertMany(apiPokeSums);
@@ -194,7 +220,7 @@ async function searchAllPokemon(
     });
 }
 
-//Itterate through summaries and fetch individual pokemon data. Store it if its big.
+//Iterate through summaries and fetch individual pokemon data. Store it if its big.
 //return the super array. Had some problem sending 900 gets in loop
 async function searchBigPokemon(pokemonSummaries, pokemons = []) {
   while (pokemonSummaries.length) {
