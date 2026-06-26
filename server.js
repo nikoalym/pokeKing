@@ -61,8 +61,8 @@ function getPokemonStatTotal(stats = []) {
 }
 
 const apiRateLimiter = rateLimit({
-  windowMs: 10 * 1000,
-  limit: 25,
+  windowMs: 60 * 1000,
+  limit: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -120,7 +120,7 @@ mongoose
           paginator: { pages: pages, skip: skip, page: page, limit: limit },
         });
       } catch (error) {
-        console.log(`Failed to load pokemons for page ${req.params.page}.`, error);
+        console.log("Failed to load pokemons for page.", req.params.page, error);
         res.status(500).send({ error: "Failed to load pokemons." });
       }
     });
