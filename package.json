@@ -2,10 +2,10 @@
   "name": "pokeking",
   "version": "1.0.0",
   "description": "Pokeking Search Tool",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --check server.js && node -e \"const fs=require('fs');const html=fs.readFileSync('index.html','utf8');const scripts=[...html.matchAll(/<script(?:[^>]*)>([\\s\\S]*?)<\\/script>/g)].map((match)=>match[1].trim()).filter(Boolean);if(!scripts.length) throw new Error('Inline script not found'); new Function(scripts[scripts.length-1]); console.log('Client script syntax OK');\""
   },
   "repository": {
     "type": "git",

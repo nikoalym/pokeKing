@@ -3,11 +3,10 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const path = require("path");
 
-//my mongo atlas url
-const url =
-  "mongodb+srv://root:toor@devcluster.solsp.mongodb.net/dev?retryWrites=true&w=majority";
+const url = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/pokeking";
 //express port
-const port = 3000;
+const port = process.env.PORT || 3000;
+const shouldResetDb = process.env.RESET_DB === "true";
 const app = express();
 //Pokemon summary model
 const PokemonSummarySchema = new mongoose.Schema({
@@ -56,16 +55,23 @@ function scheduleRequests(axiosInstance, intervalMs) {
 
 scheduleRequests(axios, 1000);
 
+function getPokemonStatTotal(stats = []) {
+  return stats.reduce((sum, stat) => sum + stat.base_stat, 0);
+}
+
 mongoose
   .connect(url, {
     useUnifiedTopology: true,
     useNewUrlParser: true,
   })
   .then(async () => {
-    //reset the db. Uncoment to persist
-    PokemonProfileModel.collection.drop()
-    PokemonSummaryModel.collection.drop()
-    
+    if (shouldResetDb) {
+      await Promise.all([
+        PokemonProfileModel.deleteMany({}),
+        PokemonSummaryModel.deleteMany({}),
+      ]);
+    }
+
     //get initial data
     var pokemonSums = await initDb();
 
@@ -82,48 +88,74 @@ mongoose
     //return pokemons in db by page
     // id is for paging
     app.get("/pokemons/:id", async function (req, res) {
-      var page = req.params.id; //index
-      var limit = 10; // how many entries the response will have
-      var skip = limit * page; //offset
-      var count = await PokemonProfileModel.countDocuments();
-      var pokemons = await PokemonProfileModel.find(
-        {},
-        {},
-        { skip: skip, limit: limit }
-      ).sort("-weight");
-      var pages = Math.ceil(count / limit); //number of pages
-      res.send({
-        pokemons: pokemons,
-        paginator: { pages: pages, skip: skip, page: page, limit: limit },
-      });
+      try {
+        var page = Number.parseInt(req.params.id, 10); //index
+        var limit = 10; // how many entries the response will have
+
+        if (Number.isNaN(page) || page < 0) {
+          return res.status(400).send({ error: "Invalid page number." });
+        }
+
+        var skip = limit * page; //offset
+        var count = await PokemonProfileModel.countDocuments();
+        var pokemons = await PokemonProfileModel.find(
+          {},
+          {},
+          { skip: skip, limit: limit }
+        ).sort("-weight");
+        var pages = Math.ceil(count / limit); //number of pages
+        res.send({
+          pokemons: pokemons,
+          paginator: { pages: pages, skip: skip, page: page, limit: limit },
+        });
+      } catch (error) {
+        console.log("Failed to load pokemons.", error);
+        res.status(500).send({ error: "Failed to load pokemons." });
+      }
     });
-    
+
     //return the pokeKing
     app.get("/king", async function (req, res) {
-      pokemons = await PokemonProfileModel.find(
-        {},
-        { name: 1, "stats.base_stat": 1, id: 1 }
-      );
-      hihi = pokemons.map((pokemon, index) => {
-        let base_stats = pokemon.stats.map((data) => data.base_stat);
-        let sum_stat = base_stats.reduce((a, b) => a + b, 0);
-        return { name: pokemons[index].name, sum: sum_stat };
-      });
-      pipi = hihi.reduce((a, b) => {
-        return a.sum > b.sum ? a : b;
-      });
-      king = await PokemonProfileModel.findOne({ name: pipi.name });
-      res.send(king);
+      try {
+        const pokemons = await PokemonProfileModel.find(
+          {},
+          { name: 1, "stats.base_stat": 1, id: 1 }
+        );
+
+        if (!pokemons.length) {
+          return res.status(404).send({ error: "No pokemons found." });
+        }
+
+        const kingSummary = pokemons
+          .map((pokemon) => ({
+            name: pokemon.name,
+            sum: getPokemonStatTotal(pokemon.stats),
+          }))
+          .reduce((bestPokemon, currentPokemon) => {
+            return bestPokemon.sum > currentPokemon.sum
+              ? bestPokemon
+              : currentPokemon;
+          });
+
+        const king = await PokemonProfileModel.findOne({ name: kingSummary.name });
+        res.send(king);
+      } catch (error) {
+        console.log("Failed to load king.", error);
+        res.status(500).send({ error: "Failed to load king." });
+      }
     });
 
     //start the server
     app.listen(port, () =>
       console.log(`PokeKing search started at port ${port}!`)
     );
+  })
+  .catch((error) => {
+    console.log("Failed to start PokeKing.", error);
+    process.exit(1);
   });
 
-
-  //check if we have anything in db..
+//check if we have anything in db..
 // else itterate the api to fill it.
 async function initDb() {
   return PokemonSummaryModel.find().then((pokemon) => {
@@ -134,11 +166,10 @@ async function initDb() {
     } else {
       console.log("No Pokemon found, adding some...");
       //recursive function to itterate through the api
-      return searchAllPokemon().then((apiPokeSums) =>
-        PokemonSummaryModel.insertMany(apiPokeSums).then(
-          console.log("Pokemons appeared!!")
-        )
-      );
+      return searchAllPokemon().then((apiPokeSums) => {
+        console.log("Pokemons appeared!!");
+        return PokemonSummaryModel.insertMany(apiPokeSums);
+      });
     }
   });
 }
@@ -153,11 +184,13 @@ async function searchAllPokemon(
     .then((res) => res.data)
     .catch((error) => console.log("axios error", error))
     .then((data) => {
-      while (data.next) {
-        pokemons = pokemons.concat(data.results);
-        return searchAllPokemon(data.next, pokemons);
+      const nextPokemons = pokemons.concat(data.results);
+
+      if (data.next) {
+        return searchAllPokemon(data.next, nextPokemons);
       }
-      return pokemons;
+
+      return nextPokemons;
     });
 }
 
