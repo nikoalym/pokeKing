@@ -312,8 +312,13 @@
     });
 
     setInterval(() => {
-      const activePage = Number($(".active").val() || 0);
-      fetchPage(activePage, false, false);
+      const activePage = $(".active").val();
+
+      if (activePage === undefined) {
+        return;
+      }
+
+      fetchPage(Number(activePage), false, false);
     }, 4000);
 
     //first paginator draw generated at start
